@@ -17,7 +17,19 @@
 #include <zephyr.h>
 #include <misc/printk.h>
 
+#include "bootutil/image.h"
+#include "bootutil/bootutil.h"
+
 void main(void)
 {
+	struct boot_rsp rsp;
+	int rc;
+
+	rc = boot_go(&rsp);
+	if (rc != 0) {
+		printk("Unable to find bootable image\n");
+		while (1)
+			;
+	}
 	printk("Hello World! %s\n", CONFIG_ARCH);
 }

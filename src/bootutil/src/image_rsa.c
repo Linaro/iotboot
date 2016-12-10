@@ -19,7 +19,7 @@
 
 #include "syscfg/syscfg.h"
 
-#if MYNEWT_VAL(BOOTUTIL_SIGN_RSA)
+#if defined(BOOTUTIL_SIGN_RSA)
 #include "bootutil/sign_key.h"
 
 #include "mbedtls/rsa.h"
