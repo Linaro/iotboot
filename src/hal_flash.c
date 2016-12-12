@@ -22,10 +22,8 @@
 
 #include "hal/hal_flash.h"
 
-#define D(x) x { \
-	printk("Unimplemented function: %s\n", __func__); \
-	while (1) \
-		; \
+/* All of the currently supported devices allow single byte writes. */
+uint8_t hal_flash_align(uint8_t flash_id)
+{
+	return 1;
 }
-
-D(uint8_t hal_flash_align(uint8_t flash_id))

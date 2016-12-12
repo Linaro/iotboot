@@ -16,14 +16,31 @@
 
 #include <zephyr.h>
 #include <misc/printk.h>
+#include <flash.h>
+#include <asm_inline.h>
 
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 
+struct device *boot_flash_device;
+
+struct vector_table {
+	uint32_t msp;
+	uint32_t reset;
+};
+
 void main(void)
 {
 	struct boot_rsp rsp;
+	struct vector_table *vt;
 	int rc;
+
+	boot_flash_device = device_get_binding("STM32F4_FLASH");
+	if (!boot_flash_device) {
+		printk("Flash device not found\n");
+		while (1)
+			;
+	}
 
 	rc = boot_go(&rsp);
 	if (rc != 0) {
@@ -31,5 +48,14 @@ void main(void)
 		while (1)
 			;
 	}
-	printk("Hello World! %s\n", CONFIG_ARCH);
+
+	printk("Bootloader chain: 0x%x\n", rsp.br_image_addr);
+	vt = (struct vector_table *)(rsp.br_image_addr + 0x80);
+	irq_lock();
+	_MspSet(vt->msp);
+	((void (*)(void))vt->reset)();
+
+	printk("Never should get here\n");
+	while (1)
+		;
 }
