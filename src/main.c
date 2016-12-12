@@ -29,11 +29,15 @@ struct vector_table {
 	uint32_t reset;
 };
 
+void os_heap_init(void);
+
 void main(void)
 {
 	struct boot_rsp rsp;
 	struct vector_table *vt;
 	int rc;
+
+	os_heap_init();
 
 	boot_flash_device = device_get_binding("STM32F4_FLASH");
 	if (!boot_flash_device) {

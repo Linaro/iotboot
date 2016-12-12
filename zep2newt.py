@@ -310,16 +310,17 @@ def get_args():
 # 
 # ################################################################################
 
-class Signature():
+class Signature(object):
     """
     Sign an image appropriately.
     """
 
-    def compute(self, payload):
+    def compute(self, payload, key_file):
         # Base computes sha256.
         ctx = SHA256.new()
         ctx.update(payload)
         self.hash = ctx.digest()
+        self.ctx = ctx
 
     def get_trailer(self):
         return struct.pack('bxh32s', newtimg.IMAGE_TLV_SHA256,
@@ -332,8 +333,31 @@ class Signature():
     def get_flags(self):
         return newtimg.IMAGE_F_SHA256
 
+class RSASignature(Signature):
+
+    def compute(self, payload, key_file):
+        super(RSASignature, self).compute(payload, key_file)
+        with open(key_file, 'rb') as f:
+            rsa_key = RSA.importKey(f.read())
+        rsa = PKCS1_v1_5.new(rsa_key)
+        self.signature = rsa.sign(self.ctx)
+
+    def trailer_len(self):
+        return super(RSASignature, self).trailer_len() + newtimg.RSA_SIZE
+
+    def get_trailer(self):
+        buf = bytearray(super(RSASignature, self).get_trailer())
+        buf.extend(struct.pack('bxh', newtimg.IMAGE_TLV_RSA2048,
+                newtimg.RSA_SIZE))
+        buf.extend(self.signature)
+        return buf
+
+    def get_flags(self):
+        return newtimg.IMAGE_F_PKCS15_RSA2048_SHA256 | newtimg.IMAGE_F_SHA256
+
 sigs = {
         'SHA256': Signature,
+        'RSA': RSASignature,
         }
 
 class Convert():
@@ -356,7 +380,7 @@ class Convert():
         assert len(header) == 32
         self.image[:len(header)] = header
 
-        sig.compute(self.image)
+        sig.compute(self.image, args.key_file)
         self.trailer = sig.get_trailer()
 
         self.image.extend(self.trailer)

@@ -2,6 +2,8 @@
 
 ./zep2newt.py \
     --bin ../zephyr/samples/shell/outdir/96b_carbon/zephyr.bin \
+    --key root.pem \
+    --sig RSA \
     --out shell.signed.bin \
     --bit --pad 0x20000
 
