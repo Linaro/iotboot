@@ -1,6 +1,6 @@
 #! /bin/bash
 
+source $(dirname $0)/target.sh
 source ../zephyr/zephyr-env.sh
 
-# make BOARD=96b_carbon "$@"
-make BOARD=frdm_k64f "$@"
+make BOARD=$BOARD "$@"
