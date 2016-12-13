@@ -174,9 +174,10 @@ int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
 	return 0;
 }
 
+uint8_t sim_flash_align = 1;
 uint8_t flash_area_align(const struct flash_area *area)
 {
-	return 1;
+	return sim_flash_align;
 }
 
 

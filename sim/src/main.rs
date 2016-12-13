@@ -46,9 +46,13 @@ fn main() {
     // Install an upgrade image.
     let upgrade = install_image(&mut flash, 0x040000, 41922);
 
+    // Set an alignment, and position the magic value.
+    unsafe { sim_flash_align = 1; }
+    let trailer_size = unsafe { boot_trailer_sz(sim_flash_align) };
+
     // Mark the upgrade as ready to install.  (This looks like it might be a bug in the code,
     // however.)
-    mark_upgrade(&mut flash, 0x060000 - 402);
+    mark_upgrade(&mut flash, 0x060000 - trailer_size as usize);
 
     let (fl2, total_count) = try_upgrade(&flash, &areadesc, None);
     println!("First boot, count={}", total_count);
@@ -136,10 +140,11 @@ fn try_revert(flash: &Flash, areadesc: &AreaDesc) -> Flash {
 fn try_norevert(flash: &Flash, areadesc: &AreaDesc) -> Flash {
     let mut fl = flash.clone();
     unsafe { flash_counter = 0 };
+    let align = unsafe { sim_flash_align } as usize;
 
     assert_eq!(boot_go(&mut fl, &areadesc), 0);
     // Write boot_ok
-    fl.write(0x040000 - 1, &[1]).unwrap();
+    fl.write(0x040000 - align, &[1]).unwrap();
     assert_eq!(boot_go(&mut fl, &areadesc), 0);
     fl
 }
@@ -274,10 +279,20 @@ trait AsRaw : Sized {
     }
 }
 
+fn show_sizes() {
+    for min in &[1, 2, 4, 8] {
+        let msize = unsafe { boot_trailer_sz(*min) };
+        println!("{:2}: {} (0x{:x})", min, msize, msize);
+    }
+}
+
 extern "C" {
     // This generates a warning about `CAreaDesc` not being foreign safe.  There doesn't appear to
     // be any way to get rid of this warning.  See https://github.com/rust-lang/rust/issues/34798
     // for information and tracking.
     fn invoke_boot_go(flash: *mut libc::c_void, areadesc: *const CAreaDesc) -> libc::c_int;
     static mut flash_counter: libc::c_int;
+
+    static mut sim_flash_align: u8;
+    fn boot_trailer_sz(min_write_sz: u8) -> u32;
 }
