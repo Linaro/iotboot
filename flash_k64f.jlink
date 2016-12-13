@@ -1,4 +1,0 @@
-h
-r
-loadfile outdir/frdm_k64f/zephyr.bin 0x00000000
-q
