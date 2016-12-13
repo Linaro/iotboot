@@ -1,0 +1,80 @@
+From 43c76057f8c3b029ba9312603c9f49e5063bca1b Mon Sep 17 00:00:00 2001
+From: David Brown <david.brown@linaro.org>
+Date: Mon, 12 Dec 2016 11:44:50 -0700
+Subject: [PATCH 2/2] Create CONFIG_BOOT_HEADER
+
+The Mynewt project bootloader prepends a small header to the image, and
+expects the image to be built and liked such that it can run with this
+header in place.  Since Zephyr leaves the boot vector table in flash, we
+need to know about this here.
+
+Enabling CONFIG_BOOT_HEADER will prepend 128 bytes of zeros to the
+image, moving the vector table to the next possible slot.  It is
+expected for external tools to be able to replace this padding with the
+header itself.
+
+This also fixes the stm32f4 target, which assumes the vector table
+resides at the start of flash.
+---
+ arch/arm/core/cortex_m/Kconfig              | 8 ++++++++
+ arch/arm/soc/st_stm32/stm32f4/soc.c         | 4 ++++
+ include/arch/arm/cortex_m/scripts/linker.ld | 8 ++++++++
+ 3 files changed, 20 insertions(+)
+
+diff --git a/arch/arm/core/cortex_m/Kconfig b/arch/arm/core/cortex_m/Kconfig
+index 0d2ed7a..92dee64 100644
+--- a/arch/arm/core/cortex_m/Kconfig
++++ b/arch/arm/core/cortex_m/Kconfig
+@@ -189,6 +189,14 @@ config FLASH_BASE_ADDRESS
+ 	This option specifies the base address of the flash on the board.  It is
+ 	normally set by the board's defconfig file and the user should generally
+ 	avoid modifying it via the menu configuration.
++
++config BOOT_HEADER
++	bool
++	prompt "Allow space in front of the image for a boot header"
++	help
++	Place the image itself slightly later in memory, currently by
++	128 bytes which is necessary for the boot vector to have
++	proper alignment
+ endmenu
+ 
+ menu "ARM Cortex-M0/M0+/M3/M4/M7 options"
+diff --git a/arch/arm/soc/st_stm32/stm32f4/soc.c b/arch/arm/soc/st_stm32/stm32f4/soc.c
+index 622b105..00f6977 100644
+--- a/arch/arm/soc/st_stm32/stm32f4/soc.c
++++ b/arch/arm/soc/st_stm32/stm32f4/soc.c
+@@ -45,7 +45,11 @@ static int st_stm32f4_init(struct device *arg)
+ 	/* Setup the vector table offset register (VTOR),
+ 	 * which is located at the beginning of flash area.
+ 	 */
++#ifdef CONFIG_BOOT_HEADER
++	_scs_relocate_vector_table((void *)(CONFIG_FLASH_BASE_ADDRESS + 0x80));
++#else
+ 	_scs_relocate_vector_table((void *)CONFIG_FLASH_BASE_ADDRESS);
++#endif
+ 
+ 	/* Clear all faults */
+ 	_ScbMemFaultAllFaultsReset();
+diff --git a/include/arch/arm/cortex_m/scripts/linker.ld b/include/arch/arm/cortex_m/scripts/linker.ld
+index 6d4b019..8489af7 100644
+--- a/include/arch/arm/cortex_m/scripts/linker.ld
++++ b/include/arch/arm/cortex_m/scripts/linker.ld
+@@ -82,6 +82,14 @@ SECTIONS
+ 
+     SECTION_PROLOGUE(_TEXT_SECTION_NAME,,)
+ 	{
++#ifdef CONFIG_BOOT_HEADER
++	/*
++	 * On Cortex-M, the boot vector must be aligned to 128-bytes.
++	 * Move up by one to allow for the boot image to be prepended
++	 * to the image.
++	 */
++	. = 0x80;
++#endif
+ 	KEEP(*(.exc_vector_table))
+ 	KEEP(*(".exc_vector_table.*"))
+ 
+-- 
+2.10.2
+
