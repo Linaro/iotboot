@@ -22,6 +22,14 @@
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 
+#if defined(CONFIG_BOARD_FRDM_K64F)
+#define BOOT_FLASH "KSDK_FLASH"
+#elif defined(CONFIG_BOARD_96B_CARBON)
+#define BOOT_FLASH "STM32F4_FLASH"
+#else
+#error "Board is currently not supported by bootloader"
+#endif
+
 struct device *boot_flash_device;
 
 struct vector_table {
@@ -39,7 +47,7 @@ void main(void)
 
 	os_heap_init();
 
-	boot_flash_device = device_get_binding("STM32F4_FLASH");
+	boot_flash_device = device_get_binding(BOOT_FLASH);
 	if (!boot_flash_device) {
 		printk("Flash device not found\n");
 		while (1)
