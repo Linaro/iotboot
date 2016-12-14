@@ -1,0 +1,62 @@
+From 87e7ed0099d73b9f2ae1d9a9a954809a5e0b051a Mon Sep 17 00:00:00 2001
+From: David Brown <david.brown@linaro.org>
+Date: Wed, 14 Dec 2016 07:56:44 -0700
+Subject: [PATCH 3/4] TEST: Add an 'ok' command
+
+By doing:
+    set_module sample_module
+    ok
+
+in the shell, it will mark itself as good (assuming some hard coded
+addresses).  This is used for testing the bootloader.
+---
+ samples/shell/src/main.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/samples/shell/src/main.c b/samples/shell/src/main.c
+index d6521e6..86b7152 100644
+--- a/samples/shell/src/main.c
++++ b/samples/shell/src/main.c
+@@ -17,6 +17,7 @@
+ #include <zephyr.h>
+ #include <misc/printk.h>
+ #include <misc/shell.h>
++#include <flash.h>
+ 
+ static int shell_cmd_ping(int argc, char *argv[])
+ {
+@@ -32,11 +33,31 @@ static int shell_cmd_params(int argc, char *argv[])
+ 	return 0;
+ }
+ 
++static int shell_cmd_ok(int argc, char *argv[])
++{
++	struct device *flash;
++	int rc;
++	uint8_t marker = 0;
++
++	flash = device_get_binding("STM32F4_FLASH");
++	if (!flash) {
++		printk("Flash device not found\n");
++		return -1;
++	}
++
++	rc = flash_write(flash, 0x40000 - 1, &marker, 1);
++	if (rc == 0) {
++		printk("Shell image marked ok\n");
++	}
++	return rc;
++}
++
+ #define MY_SHELL_MODULE "sample_module"
+ 
+ static struct shell_cmd commands[] = {
+ 	{ "ping", shell_cmd_ping },
+ 	{ "params", shell_cmd_params, "print argc" },
++	{ "ok", shell_cmd_ok, "mark image ok" },
+ 	{ NULL, NULL }
+ };
+ 
+-- 
+2.10.2
+

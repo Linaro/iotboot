@@ -1,0 +1,39 @@
+From b98d465e8c8591f190da86682932e04cc4198dc5 Mon Sep 17 00:00:00 2001
+From: David Brown <david.brown@linaro.org>
+Date: Wed, 14 Dec 2016 07:57:39 -0700
+Subject: [PATCH 4/4] TEST: Build hello_world and shell for bootloader
+
+Configure these apps so that they will run after the boot loader.
+---
+ samples/hello_world/prj.conf | 6 +++++-
+ samples/shell/prj.conf       | 6 ++++++
+ 2 files changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/samples/hello_world/prj.conf b/samples/hello_world/prj.conf
+index b2a4ba5..fc1c1f6 100644
+--- a/samples/hello_world/prj.conf
++++ b/samples/hello_world/prj.conf
+@@ -1 +1,5 @@
+-# nothing here
++CONFIG_PRINTK=y
++CONFIG_BOOT_HEADER=y
++CONFIG_FLASH_BASE_ADDRESS=0x08020000
++### CONFIG_FLASH_BASE_ADDRESS=0x00020000
++CONFIG_DEBUG=y
+diff --git a/samples/shell/prj.conf b/samples/shell/prj.conf
+index 889f15a..ea6cb8f 100644
+--- a/samples/shell/prj.conf
++++ b/samples/shell/prj.conf
+@@ -3,3 +3,9 @@ CONFIG_CONSOLE_HANDLER_SHELL=y
+ CONFIG_ENABLE_SHELL=y
+ CONFIG_PRINTK=y
+ CONFIG_KERNEL_SHELL=y
++CONFIG_BOOT_HEADER=y
++CONFIG_FLASH_BASE_ADDRESS=0x08020000
++### CONFIG_FLASH_BASE_ADDRESS=0x00020000
++CONFIG_DEBUG=y
++CONFIG_FLASH=y
++CONFIG_SOC_FLASH_STM32F4=y
+-- 
+2.10.2
+
