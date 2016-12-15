@@ -62,7 +62,8 @@ void main(void)
 	}
 
 	printk("Bootloader chain: 0x%x\n", rsp.br_image_addr);
-	vt = (struct vector_table *)(rsp.br_image_addr + 0x80);
+	vt = (struct vector_table *)(rsp.br_image_addr +
+				     rsp.br_hdr->ih_hdr_size);
 	irq_lock();
 	_MspSet(vt->msp);
 	((void (*)(void))vt->reset)();
