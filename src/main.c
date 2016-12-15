@@ -66,6 +66,10 @@ void main(void)
 				     rsp.br_hdr->ih_hdr_size);
 	irq_lock();
 	_MspSet(vt->msp);
+
+	/* Not all targets set the VTOR, so just set it. */
+	_scs_relocate_vector_table((void *) vt);
+
 	((void (*)(void))vt->reset)();
 
 	printk("Never should get here\n");
