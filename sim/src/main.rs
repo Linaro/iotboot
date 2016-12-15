@@ -9,12 +9,13 @@ use std::mem;
 use std::slice;
 
 mod area;
+mod c;
 mod flash;
 pub mod api;
 mod pdump;
 
 use flash::Flash;
-use area::{AreaDesc, CAreaDesc, FlashId};
+use area::{AreaDesc, FlashId};
 
 fn main() {
     let (mut flash, areadesc) = if false {
@@ -47,8 +48,8 @@ fn main() {
     let upgrade = install_image(&mut flash, 0x040000, 41922);
 
     // Set an alignment, and position the magic value.
-    unsafe { sim_flash_align = 1; }
-    let trailer_size = unsafe { boot_trailer_sz(sim_flash_align) };
+    c::set_sim_flash_align(1);
+    let trailer_size = c::boot_trailer_sz();
 
     // Mark the upgrade as ready to install.  (This looks like it might be a bug in the code,
     // however.)
@@ -89,14 +90,14 @@ fn main() {
     // show_flash(&flash);
 
     println!("First boot for upgrade");
-    // unsafe { flash_counter = 570 };
-    boot_go(&mut flash, &areadesc);
-    // println!("{} flash ops", unsafe { flash_counter });
+    // c::set_flash_counter(570);
+    c::boot_go(&mut flash, &areadesc);
+    // println!("{} flash ops", c::get_flash_counter());
 
     verify_image(&flash, 0x020000, &upgrade);
 
     println!("\n------------------\nSecond boot");
-    boot_go(&mut flash, &areadesc);
+    c::boot_go(&mut flash, &areadesc);
     */
 }
 
@@ -106,46 +107,46 @@ fn try_upgrade(flash: &Flash, areadesc: &AreaDesc, stop: Option<i32>) -> (Flash,
     // Clone the flash to have a new copy.
     let mut fl = flash.clone();
 
-    unsafe { flash_counter = stop.unwrap_or(0) };
-    let (first_interrupted, cnt1) = match boot_go(&mut fl, &areadesc) {
+    c::set_flash_counter(stop.unwrap_or(0));
+    let (first_interrupted, cnt1) = match c::boot_go(&mut fl, &areadesc) {
         -0x13579 => (true, stop.unwrap()),
-        0 => (false, unsafe { -flash_counter }),
+        0 => (false, -c::get_flash_counter()),
         x => panic!("Unknown return: {}", x),
     };
-    unsafe { flash_counter = 0 };
+    c::set_flash_counter(0);
 
     if first_interrupted {
         // fl.dump();
-        match boot_go(&mut fl, &areadesc) {
+        match c::boot_go(&mut fl, &areadesc) {
             -0x13579 => panic!("Shouldn't stop again"),
             0 => (),
             x => panic!("Unknown return: {}", x),
         }
     }
 
-    let cnt2 = cnt1 - unsafe { flash_counter };
+    let cnt2 = cnt1 - c::get_flash_counter();
 
     (fl, cnt2)
 }
 
 fn try_revert(flash: &Flash, areadesc: &AreaDesc) -> Flash {
     let mut fl = flash.clone();
-    unsafe { flash_counter = 0 };
+    c::set_flash_counter(0);
 
-    assert_eq!(boot_go(&mut fl, &areadesc), 0);
-    assert_eq!(boot_go(&mut fl, &areadesc), 0);
+    assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
+    assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
     fl
 }
 
 fn try_norevert(flash: &Flash, areadesc: &AreaDesc) -> Flash {
     let mut fl = flash.clone();
-    unsafe { flash_counter = 0 };
-    let align = unsafe { sim_flash_align } as usize;
+    c::set_flash_counter(0);
+    let align = c::get_sim_flash_align() as usize;
 
-    assert_eq!(boot_go(&mut fl, &areadesc), 0);
+    assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
     // Write boot_ok
     fl.write(0x040000 - align, &[1]).unwrap();
-    assert_eq!(boot_go(&mut fl, &areadesc), 0);
+    assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
     fl
 }
 
@@ -158,12 +159,6 @@ fn show_flash(flash: &Flash) {
                  sector.num, sector.base, sector.size);
     }
     println!("");
-}
-
-/// Invoke the bootloader on this flash device.
-fn boot_go(flash: &mut Flash, areadesc: &AreaDesc) -> i32 {
-    unsafe { invoke_boot_go(flash as *mut _ as *mut libc::c_void,
-                            &areadesc.get_c() as *const _) as i32 }
 }
 
 /// Install a "program" into the given image.  This fakes the image header, or at least all of the
@@ -279,20 +274,9 @@ trait AsRaw : Sized {
     }
 }
 
-fn show_sizes() {
-    for min in &[1, 2, 4, 8] {
-        let msize = unsafe { boot_trailer_sz(*min) };
-        println!("{:2}: {} (0x{:x})", min, msize, msize);
-    }
-}
-
-extern "C" {
-    // This generates a warning about `CAreaDesc` not being foreign safe.  There doesn't appear to
-    // be any way to get rid of this warning.  See https://github.com/rust-lang/rust/issues/34798
-    // for information and tracking.
-    fn invoke_boot_go(flash: *mut libc::c_void, areadesc: *const CAreaDesc) -> libc::c_int;
-    static mut flash_counter: libc::c_int;
-
-    static mut sim_flash_align: u8;
-    fn boot_trailer_sz(min_write_sz: u8) -> u32;
-}
+// fn show_sizes() {
+//     for min in &[1, 2, 4, 8] {
+//         let msize = unsafe { boot_trailer_sz(*min) };
+//         println!("{:2}: {} (0x{:x})", min, msize, msize);
+//     }
+// }
