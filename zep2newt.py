@@ -1,4 +1,7 @@
 #!/usr/bin/python2
+
+from __future__ import print_function
+
 import mmap
 import os
 import struct
@@ -172,7 +175,7 @@ class Convert():
         table will be at the beginning, rather than the zero padding.
         Verify that the padding is present.
         """
-        if self.image[:self.vtable_offs] != ('\x00' * self.vtable_offs):
+        if self.image[:self.vtable_offs] != bytearray(self.vtable_offs):
             raise Exception("Image does not have space for header")
 
     def make_header(self, sig):
@@ -201,7 +204,7 @@ class Convert():
         if len(self.image) > pad:
             raise Exception("Image is too large for padding")
 
-        self.image.extend('\xFF' * (pad - len(self.image)))
+        self.image.extend(b'\xFF' * (pad - len(self.image)))
 
         magic = struct.pack('4I', *newtimg.BOOT_IMG_MAGIC)
         pos = pad - trailer_size(self.word_size)
