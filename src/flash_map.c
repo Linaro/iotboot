@@ -22,6 +22,7 @@
 #include <flash.h>
 
 #include <flash_map/flash_map.h>
+#include <hal/hal_flash.h>
 #include <sysflash/sysflash.h>
 
 extern struct device *boot_flash_device;
@@ -103,7 +104,7 @@ int flash_area_erase(const struct flash_area *area, uint32_t off, uint32_t len)
 
 uint8_t flash_area_align(const struct flash_area *area)
 {
-	return 1;
+	return hal_flash_align(area->fa_id);
 }
 
 /*
