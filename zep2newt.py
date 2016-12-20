@@ -35,6 +35,10 @@ def get_args():
                         help='Offset for the binary in flash (at what address \
                         should it be flashed?)')
 
+    parser.add_argument('--word-size', required=False, dest='word_size',
+            default=1,
+            help='Writable size of flash device (1, 2, 4, or 8)')
+
     parser.add_argument('--vtoff', required=False, dest='vtable_offs', \
                         default=str(hex(newtimg.OFFSET_VECTOR_TABLE)), \
                         help='Offset to vector table in HEX (default: 0x80)')
@@ -58,6 +62,18 @@ def get_args():
                         help='Flash using JLinkExe')
 
     return parser.parse_args()
+
+def trailer_size(word_size):
+    """
+    Compute the size of the image trailer.
+
+    The image trailer size depends on the writable unit size of the
+    flash in question.  Given a word size of 1, 2, 4 or 8, return the
+    size, in bytes, of the image trailer.  The magic number should be
+    placed at this particular offset from the end of the segment
+    """
+    sizes = { 1: 402, 2: 788, 4: 1560, 8: 3104 }
+    return sizes[word_size]
 
 class Signature(object):
     """
@@ -120,6 +136,7 @@ class Convert():
             self.debug = False
 
         self.vtable_offs = int(args.vtable_offs, 16)
+        self.word_size = int(args.word_size)
 
         self.load_image(args.binary_file)
         self.validate_header()
@@ -187,7 +204,7 @@ class Convert():
         self.image.extend('\xFF' * (pad - len(self.image)))
 
         magic = struct.pack('4I', *newtimg.BOOT_IMG_MAGIC)
-        pos = pad - 402
+        pos = pad - trailer_size(self.word_size)
         self.image[pos:pos + len(magic)] = magic
 
 def main(argv):
