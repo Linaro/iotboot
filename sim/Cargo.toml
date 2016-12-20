@@ -11,6 +11,8 @@ gcc = "0.3.38"
 libc = "0.2.0"
 rand = "0.3.0"
 error-chain = "0.7.1"
+docopt = "0.6"
+rustc-serialize = "0.3"
 
 [profile.test]
 opt-level = 1

@@ -1,10 +1,14 @@
+extern crate docopt;
 extern crate libc;
 extern crate rand;
+extern crate rustc_serialize;
 
 #[macro_use]
 extern crate error_chain;
 
+use docopt::Docopt;
 use rand::{Rng, SeedableRng, XorShiftRng};
+use rustc_serialize::{Decodable, Decoder};
 use std::mem;
 use std::slice;
 
@@ -17,27 +21,83 @@ mod pdump;
 use flash::Flash;
 use area::{AreaDesc, FlashId};
 
-fn main() {
-    show_sizes();
-    let (mut flash, areadesc) = if false {
-        // STM style flash.  Large sectors, with a large scratch area.
-        let flash = Flash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024,
-                               64 * 1024,
-                               128 * 1024, 128 * 1024, 128 * 1024]);
-        let mut areadesc = AreaDesc::new(&flash);
-        areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
-        areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
-        areadesc.add_image(0x060000, 0x020000, FlashId::ImageScratch);
-        (flash, areadesc)
-    } else {
-        // NXP style flash.  Small sectors, one small sector for scratch.
-        let flash = Flash::new(vec![4096; 128]);
+const USAGE: &'static str = "
+Mcuboot simulator
 
-        let mut areadesc = AreaDesc::new(&flash);
-        areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
-        areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
-        areadesc.add_image(0x060000, 0x001000, FlashId::ImageScratch);
-        (flash, areadesc)
+Usage:
+  bootsim sizes
+  bootsim run --device TYPE [--align SIZE]
+  bootsim (--help | --version)
+
+Options:
+  -h, --help         Show this message
+  --version          Version
+  --device TYPE      MCU to simulate
+                     Valid values: stm32f4, k64f
+  --align SIZE       Flash write alignment
+";
+
+#[derive(Debug, RustcDecodable)]
+struct Args {
+    flag_help: bool,
+    flag_version: bool,
+    flag_device: Option<DeviceName>,
+    flag_align: Option<AlignArg>,
+    cmd_sizes: bool,
+    cmd_run: bool,
+}
+
+#[derive(Debug, RustcDecodable)]
+enum DeviceName { Stm32f4, K64f }
+
+#[derive(Debug)]
+struct AlignArg(u8);
+
+impl Decodable for AlignArg {
+    // Decode the alignment ourselves, to restrict it to the valid possible alignments.
+    fn decode<D: Decoder>(d: &mut D) -> Result<AlignArg, D::Error> {
+        let m = d.read_u8()?;
+        match m {
+            1 | 2 | 4 | 8 => Ok(AlignArg(m)),
+            _ => Err(d.error("Invalid alignment")),
+        }
+    }
+}
+
+fn main() {
+    let args: Args = Docopt::new(USAGE)
+        .and_then(|d| d.decode())
+        .unwrap_or_else(|e| e.exit());
+    // println!("args: {:#?}", args);
+
+    if args.cmd_sizes {
+        show_sizes();
+        return;
+    }
+
+    let (mut flash, areadesc) = match args.flag_device {
+        None => panic!("Missing mandatory argument"),
+        Some(DeviceName::Stm32f4) => {
+            // STM style flash.  Large sectors, with a large scratch area.
+            let flash = Flash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024,
+                                   64 * 1024,
+                                   128 * 1024, 128 * 1024, 128 * 1024]);
+            let mut areadesc = AreaDesc::new(&flash);
+            areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
+            areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
+            areadesc.add_image(0x060000, 0x020000, FlashId::ImageScratch);
+            (flash, areadesc)
+        }
+        Some(DeviceName::K64f) => {
+            // NXP style flash.  Small sectors, one small sector for scratch.
+            let flash = Flash::new(vec![4096; 128]);
+
+            let mut areadesc = AreaDesc::new(&flash);
+            areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
+            areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
+            areadesc.add_image(0x060000, 0x001000, FlashId::ImageScratch);
+            (flash, areadesc)
+        }
     };
 
     // println!("Areas: {:#?}", areadesc.get_c());
@@ -49,7 +109,7 @@ fn main() {
     let upgrade = install_image(&mut flash, 0x040000, 41922);
 
     // Set an alignment, and position the magic value.
-    c::set_sim_flash_align(1);
+    c::set_sim_flash_align(args.flag_align.map(|x| x.0).unwrap_or(1));
     let trailer_size = c::boot_trailer_sz();
 
     // Mark the upgrade as ready to install.  (This looks like it might be a bug in the code,
