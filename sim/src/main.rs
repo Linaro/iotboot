@@ -18,6 +18,7 @@ use flash::Flash;
 use area::{AreaDesc, FlashId};
 
 fn main() {
+    show_sizes();
     let (mut flash, areadesc) = if false {
         // STM style flash.  Large sectors, with a large scratch area.
         let flash = Flash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024,
@@ -274,9 +275,13 @@ trait AsRaw : Sized {
     }
 }
 
-// fn show_sizes() {
-//     for min in &[1, 2, 4, 8] {
-//         let msize = unsafe { boot_trailer_sz(*min) };
-//         println!("{:2}: {} (0x{:x})", min, msize, msize);
-//     }
-// }
+fn show_sizes() {
+    // This isn't panic safe.
+    let old_align = c::get_sim_flash_align();
+    for min in &[1, 2, 4, 8] {
+        c::set_sim_flash_align(*min);
+        let msize = c::boot_trailer_sz();
+        println!("{:2}: {} (0x{:x})", min, msize, msize);
+    }
+    c::set_sim_flash_align(old_align);
+}
