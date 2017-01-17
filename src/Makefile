@@ -1,3 +1,6 @@
+subdir-ccflags-y += -DMCUBOOT_TARGET_CONFIG='"$(BOARD).h"'
+
+ccflags-y += -I$(PROJECT)/targets
 ccflags-y += -I$(PROJECT)/include
 ccflags-y += -I$(PROJECT)/src/bootutil/include
 

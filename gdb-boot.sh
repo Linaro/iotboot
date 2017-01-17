@@ -1,7 +1,6 @@
 #! /bin/bash
 
-source $(dirname $0)/target.sh
-
+gdbexe="arm-linux-gnueabihf-gdb"
 gscript=/tmp/init$$.gdb
 
 cat > $gscript <<EOF
