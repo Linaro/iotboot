@@ -1,7 +1,7 @@
-From 0e9eb3fa8667526904a4df716594fe521747c4b9 Mon Sep 17 00:00:00 2001
+From 94f45d7c4d3ea7e1e3a929aa6d68eaebefb35ae5 Mon Sep 17 00:00:00 2001
 From: David Brown <david.brown@linaro.org>
 Date: Mon, 21 Nov 2016 11:39:18 -0700
-Subject: [PATCH 1/2] ext/lib: mbedTLS config for bootloader
+Subject: [PATCH] ext/lib: mbedTLS config for bootloader
 
 The bootloader has specific needs from mbedTLS to be able to verify
 signatures.  Create a custom config file that only enables what we need
@@ -10,16 +10,16 @@ for this functionality.
 Change-Id: I785b490c209992be26f7294427d0d2fc2666b21e
 Signed-off-by: David Brown <david.brown@linaro.org>
 ---
- ext/lib/crypto/mbedtls/configs/config-boot.h | 98 ++++++++++++++++++++++++++++
- 1 file changed, 98 insertions(+)
+ ext/lib/crypto/mbedtls/configs/config-boot.h | 99 ++++++++++++++++++++++++++++
+ 1 file changed, 99 insertions(+)
  create mode 100644 ext/lib/crypto/mbedtls/configs/config-boot.h
 
 diff --git a/ext/lib/crypto/mbedtls/configs/config-boot.h b/ext/lib/crypto/mbedtls/configs/config-boot.h
 new file mode 100644
-index 0000000..e3ff580
+index 0000000..699f40a
 --- /dev/null
 +++ b/ext/lib/crypto/mbedtls/configs/config-boot.h
-@@ -0,0 +1,98 @@
+@@ -0,0 +1,99 @@
 +/*
 + *  Minimal configuration for using TLS in the bootloader
 + *
@@ -64,6 +64,7 @@ index 0000000..e3ff580
 +#define MBEDTLS_NO_PLATFORM_ENTROPY
 +#define MBEDTLS_NO_DEFAULT_ENTROPY_SOURCES
 +#define MBEDTLS_PLATFORM_PRINTF_ALT
++#define MBEDTLS_HAVE_TIME
 +#define MBEDTLS_PLATFORM_TIME_TYPE_MACRO int
 +
 +#if !defined(CONFIG_ARM)
@@ -119,5 +120,5 @@ index 0000000..e3ff580
 +
 +#endif /* MBEDTLS_CONFIG_H */
 -- 
-2.10.2
+2.7.4
 
