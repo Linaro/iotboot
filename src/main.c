@@ -28,6 +28,9 @@
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 
+/* Same offset needs to be used by Zephyr (CONFIG_BOOT_HEADER) */
+#define VTOR_OFFSET 0x80
+
 struct device *boot_flash_device;
 
 struct vector_table {
@@ -60,10 +63,11 @@ void main(void)
 	}
 
 	printk("Bootloader chain: 0x%x\n", rsp.br_image_addr);
-	vt = (struct vector_table *)(rsp.br_image_addr +
-				     rsp.br_hdr->ih_hdr_size);
+	vt = (struct vector_table *)(rsp.br_image_addr + VTOR_OFFSET);
 	irq_lock();
 	_MspSet(vt->msp);
+
+	printk("Setting vector table to %p\n", vt);
 
 	/* Not all targets set the VTOR, so just set it. */
 	_scs_relocate_vector_table((void *) vt);
